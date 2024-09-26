@@ -1,0 +1,149 @@
+# Load necessary libraries
+library(tidyverse)
+library(geepack)
+library(MASS)
+library(qvalue)
+library(metafor)
+
+# Load the data for cross-sectional analysis using LV Mass Index
+data4 <- read.csv('C:/Users/mingj/OneDrive/Research Summary/p4d.csv') # n = 1755
+
+# Filter data for complete cases
+data4 <- data4 %>%
+  filter(S4CVDFREE == 1, !is.na(S4BMI), !is.na(FID), !is.na(S4ADADM2020), 
+         !is.na(S4LDL), !is.na(S4GFR_CKD_EPI), !is.na(S4SBP))
+
+# Standardize covariates
+data4 <- data4 %>%
+  mutate(
+    SEX = relevel(as.factor(SEX), ref = "1"),
+    S4AGE = scale(S4AGE, scale = TRUE, center = TRUE),
+    S4BMI = scale(S4BMI, scale = TRUE, center = TRUE),
+    S4SBP = scale(S4SBP, scale = TRUE, center = TRUE),
+    S4LDL = scale(S4LDL, scale = TRUE, center = TRUE),
+    LVMHT274 = scale(LVMHT274, scale = TRUE, center = TRUE),
+    S4GFR_CKD_EPI = scale(S4GFR_CKD_EPI, scale = TRUE, center = TRUE),
+    S4SMOKE = relevel(as.factor(S4SMOKE), ref = "N"),
+    S4ADADM2020 = relevel(as.factor(S4ADADM2020), ref = "NFG"),
+    S4LIPIDLOW = relevel(as.factor(S4LIPIDLOW), ref = "0"),
+    FID = as.factor(FID)
+  )
+
+# Determine the starting index of lipids
+lipid_name = 'AC(10:0)'
+start_lipid = ifelse(lipid_name %in% colnames(data4), which(colnames(data4) == lipid_name), which(colnames(data4) == 'AC.10.0.'))
+lipids_select <- data4[, start_lipid:(start_lipid + 1541)]
+
+# Initialize vectors for storing results
+n_lipids = 1542
+results <- data.frame(
+  lipid_name = colnames(lipids_select),
+  beta = rep(0, n_lipids),
+  se = rep(0, n_lipids),
+  OR = rep(0, n_lipids),
+  lower_CI = rep(0, n_lipids),
+  upper_CI = rep(0, n_lipids),
+  p_value = rep(0, n_lipids)
+)
+
+# Fit GEE model using continuous LV Mass as the outcome
+for (i in 1:n_lipids) {
+  lipid <- lipids_select[, i]
+  model <- geeglm(LVMHT274 ~ lipid + S4AGE + SEX + CENTER + S4BMI + S4GFR_CKD_EPI + S4SBP + S4ADADM2020 + S4SMOKE + S4LDL + S4LIPIDLOW,
+                  data = data4, family = gaussian, id = FID, corstr = "exchangeable")
+  summary_model <- summary(model)
+  results$beta[i] <- summary_model$coefficients['lipid', 'Estimate']
+  results$OR[i] <- exp(results$beta[i])
+  results$se[i] <- summary_model$coefficients['lipid', 'Std.err']
+  results$lower_CI[i] <- results$beta[i] - 1.96 * results$se[i]
+  results$upper_CI[i] <- results$beta[i] + 1.96 * results$se[i]
+  results$p_value[i] <- summary_model$coefficients['lipid', 'Pr(>|W|)']
+}
+
+# Calculate q-values
+results$q_value <- qvalue(results$p_value)$qvalues
+
+# Write the results to CSV
+write.csv(results, "C:/Users/mingj/OneDrive/subcvd/Manuscript LVM/LVMass manuscript/8.19_Cross-sectional/11.7.lipid_p4.csv")
+
+# Load second dataset for GEE analysis
+data5 <- read.csv("C:/Users/mingj/OneDrive/subcvd/OUSHC DATA/p5d.csv")
+
+# Filter and standardize data5
+data5 <- data5 %>%
+  filter(!is.na(S5BMI), !is.na(S5HDL), !is.na(S5TG), !is.na(FID), !is.na(S5ADADM2020), !is.na(S5LDL), !is.na(S5SBP)) %>%
+  mutate(
+    SEX = relevel(as.factor(SEX), ref = "1"),
+    S5AGE = scale(S5AGE, scale = TRUE, center = TRUE),
+    CENTER = relevel(as.factor(CENTER), ref = "AZ"),
+    S5BMI = scale(S5BMI, scale = TRUE, center = TRUE),
+    S5LDL = scale(S5LDL, scale = TRUE, center = TRUE),
+    S5SBP = scale(S5SBP, scale = TRUE, center = TRUE),
+    S5ADADM2020 = relevel(as.factor(S5ADADM2020), ref = "NFG"),
+    LVMHT27_5 = scale(LVMHT27_5, scale = TRUE, center = TRUE),
+    S5SMOKE = relevel(as.factor(S5SMOKE), ref = "N"),
+    S5LIPIDLOW = relevel(as.factor(S5LIPIDLOW), ref = "0"),
+    FID = as.factor(FID)
+  )
+
+# Determine the starting index of lipids in data5
+start_lipid2 = ifelse(lipid_name %in% colnames(data5), which(colnames(data5) == lipid_name), which(colnames(data5) == 'AC.10.0.'))
+lipids_select2 <- data5[, start_lipid2:(start_lipid2 + 1541)]
+
+# Initialize vectors for results of data5 analysis
+results2 <- data.frame(
+  lipid_name = colnames(lipids_select2),
+  beta = rep(0, n_lipids),
+  se = rep(0, n_lipids),
+  OR = rep(0, n_lipids),
+  lower_CI = rep(0, n_lipids),
+  upper_CI = rep(0, n_lipids),
+  p_value = rep(0, n_lipids)
+)
+
+# Fit GEE model using data5
+for (i in 1:n_lipids) {
+  lipid2 <- lipids_select2[, i]
+  model2 <- geeglm(LVMHT27_5 ~ lipid2 + S5AGE + SEX + CENTER + S5BMI + S5GFR_CKD_EPI + S5SBP + S5ADADM2020 + S5SMOKE + S5LDL + S5LIPIDLOW,
+                   data = data5, family = gaussian, id = FID, corstr = "exchangeable")
+  summary_model2 <- summary(model2)
+  results2$beta[i] <- summary_model2$coefficients[2, 1]
+  results2$OR[i] <- exp(results2$beta[i])
+  results2$se[i] <- summary_model2$coefficients[2, 2]
+  results2$lower_CI[i] <- results2$beta[i] - 1.96 * results2$se[i]
+  results2$upper_CI[i] <- results2$beta[i] + 1.96 * results2$se[i]
+  results2$p_value[i] <- summary_model2$coefficients[2, 4]
+}
+
+# Calculate q-values for data5
+results2$q_value <- qvalue(results2$p_value)$qvalues
+
+# Perform meta-analysis using results from both datasets
+meta_results <- data.frame(
+  beta = rep(0, nrow(results)),
+  se = rep(0, nrow(results)),
+  lower_CI = rep(0, nrow(results)),
+  upper_CI = rep(0, nrow(results)),
+  Q = rep(0, nrow(results)),
+  Q_p = rep(0, nrow(results)),
+  I2 = rep(0, nrow(results)),
+  p_value = rep(0, nrow(results))
+)
+
+for (i in 1:nrow(results)) {
+  yi <- as.numeric(c(results$beta[i], results2$beta[i]))
+  vi <- c(results$se[i]^2, results2$se[i]^2)
+  ma_model <- rma(yi, vi, method = 'FE')
+  ma_summary <- summary(ma_model)
+  meta_results$beta[i] <- ma_summary$beta
+  meta_results$se[i] <- ma_summary$se
+  meta_results$lower_CI[i] <- ma_summary$ci.lb
+  meta_results$upper_CI[i] <- ma_summary$ci.ub
+  meta_results$p_value[i] <- ma_summary$pval
+  meta_results$Q[i] <- ma_summary$QE
+  meta_results$Q_p[i] <- ma_summary$QEp
+  meta_results$I2[i] <- ma_summary$I2
+}
+
+# Calculate q-values for meta-analysis
+meta_results
