@@ -12,16 +12,20 @@ Lipid Species: 1,542 lipid species measured using LC-MS.
 LVMI: Left ventricular mass index, the primary outcome measure.
 Covariates: Age, sex, BMI, LDL cholesterol, systolic blood pressure, smoking status, diabetes status, and lipid-lowering medication use.
 Analysis Pipeline
+
 Step 1: Data Preprocessing
 The code begins by loading the datasets (data4 and data5) and performing data cleaning, including filtering for missing values.
 Covariates are standardized, and categorical variables are set to appropriate reference levels for analysis.
+
 Step 2: Cross-Sectional Analysis using Generalized Estimating Equations (GEE)
 The analysis uses GEE models to examine the cross-sectional associations between individual lipid species and LVMI in both datasets.
 Covariates such as age, sex, BMI, and other clinical factors are included in the models to adjust for potential confounders.
 Results are stored for each lipid species, including estimates, standard errors, odds ratios, and confidence intervals.
+
 Step 3: Meta-Analysis
 Results from the cross-sectional analyses of both datasets are combined using fixed-effects meta-analysis (using the metafor package).
 The meta-analysis calculates pooled estimates and assesses heterogeneity between the two datasets.
+
 Step 4: Multiple Testing Correction
 The q-values are calculated using the qvalue package to adjust for multiple testing and control the false discovery rate (FDR).
 Output
