@@ -14,6 +14,7 @@ Key Variables
 Lipid Species: 1,542 lipid species measured using LC-MS.
 LVMI: Left ventricular mass index, the primary outcome measure.
 Covariates: Age, sex, BMI, LDL cholesterol, systolic blood pressure, smoking status, diabetes status, and lipid-lowering medication use.
+
 Analysis Pipeline
 
 Step 1: Data Preprocessing
